@@ -1,0 +1,216 @@
+import pygame
+import time
+import random
+
+# Инициализация Pygame
+pygame.init()
+
+# Размеры экрана
+dis_width = 800
+dis_height = 600
+
+# Создание экрана
+dis = pygame.display.set_mode((dis_width, dis_height))
+pygame.display.set_caption('Snake Game')
+
+# Задание времени
+clock = pygame.time.Clock()
+snake_block = 10
+snake_speed = 15
+
+# Загрузка изображений
+head_img = pygame.image.load('D:/TELEGRAM/head.png')
+body_img = pygame.image.load('D:/TELEGRAM/body.png')
+food_img = pygame.image.load('D:/TELEGRAM/food.png')
+bomb_img = pygame.image.load('D:/TELEGRAM/bomb.png')
+
+# Шрифты для отображения текста
+font_style = pygame.font.SysFont("bahnschrift", 25)
+score_font = pygame.font.SysFont("comicsansms", 35)
+
+score = 0
+bombs = []
+bomb = False
+bomb_count = 0
+bonuses = []
+obstacles = []
+
+def our_snake(snake_block, snake_List):
+    if len(snake_List) > 0:
+        head = pygame.transform.scale(head_img, (snake_block, snake_block))
+        dis.blit(head, (snake_List[-1][0], snake_List[-1][1]))
+
+    for x in snake_List[:-1]:
+        body = pygame.transform.scale(body_img, (snake_block, snake_block))
+        dis.blit(body, (x[0], x[1]))
+
+    for bomb in bombs:
+        bomb_graphic = pygame.transform.scale(bomb_img, (snake_block * 3, snake_block * 3))
+        dis.blit(bomb_graphic, (bomb[0], bomb[1]))
+
+    score_text = score_font.render("Score: " + str(score), True, (0, 0, 0))
+    dis.blit(score_text, [0, 0])
+
+def message(msg, color, y_displace=0):
+    mesg = font_style.render(msg, True, color)
+    dis.blit(mesg, [dis_width / 6, dis_height / 3 + y_displace])
+
+def game_intro():
+    intro = True
+
+    while intro:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_c:
+                    return "classic"
+                if event.key == pygame.K_t:
+                    return "timed"
+                if event.key == pygame.K_s:
+                    return "survival"
+                if event.key == pygame.K_q:
+                    pygame.quit()
+                    quit()
+
+        dis.fill((0, 0, 0))
+        message("Welcome to the Snake game!", (255, 255, 255), -50)
+        message("Press C for classic mode", (255, 255, 255))
+        message("Press T for time mode", (255, 255, 255), 50)
+        message("Press S for survival mode", (255, 255, 255), 100)
+        message("Press Q to exit", (255, 255, 255), 150)
+        pygame.display.update()
+        clock.tick(15)
+
+def gameLoop(mode):
+    global score, bomb, bomb_count, bombs, bonuses, obstacles, snake_speed
+    score = 0
+    bomb = False
+    bomb_count = 0
+    bombs = []
+    bonuses = []
+    obstacles = []
+
+    game_over = False
+    game_close = False
+    bomb_interval = 30
+    bomb_counter = 0
+    start_time = time.time()
+    time_limit = 60  # 1 минута в секундах
+
+    x1 = dis_width / 2
+    y1 = dis_height / 2
+
+    x1_change = 0
+    y1_change = 0
+
+    snake_List = []
+    Length_of_snake = 1
+
+    foodx = round(random.randrange(0, dis_width - snake_block * 2) / 10.0) * 10.0
+    foody = round(random.randrange(0, dis_height - snake_block * 2) / 10.0) * 10.0
+
+    eat_sound = pygame.mixer.Sound('D:/TELEGRAM/eat.wav')
+    crash_sound = pygame.mixer.Sound('D:/TELEGRAM/crash.wav')
+
+    while not game_over:
+        while game_close:
+            dis.fill((50, 153, 213))
+            message("You've lost! Press Q to exit or C to start over", (213, 50, 80))
+            pygame.display.update()
+
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_q:
+                        game_over = True
+                        game_close = False
+                    if event.key == pygame.K_c:
+                        gameLoop(mode)
+                        bombs = []
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                game_over = True
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    x1_change = -snake_block
+                    y1_change = 0
+                elif event.key == pygame.K_RIGHT:
+                    x1_change = snake_block
+                    y1_change = 0
+                elif event.key == pygame.K_UP:
+                    y1_change = -snake_block
+                    x1_change = 0
+                elif event.key == pygame.K_DOWN:
+                    y1_change = snake_block
+                    x1_change = 0
+
+        x1 += x1_change
+        y1 += y1_change
+
+        if x1 >= dis_width:
+            x1 = 0
+        elif x1 < 0:
+            x1 = dis_width - snake_block
+        if y1 >= dis_height:
+            y1 = 0
+        elif y1 < 0:
+            y1 = dis_height - snake_block
+
+        dis.fill((50, 153, 213))
+
+        food = pygame.transform.scale(food_img, (snake_block * 2, snake_block * 2))
+        dis.blit(food, (foodx, foody))
+
+        snake_Head = [x1, y1]
+        snake_List.append(snake_Head)
+        if len(snake_List) > Length_of_snake:
+            del snake_List[0]
+
+        for x in snake_List[:-1]:
+            if x == snake_Head:
+                crash_sound.play()
+                game_close = True
+
+        our_snake(snake_block, snake_List)
+        pygame.display.update()
+
+        if x1 >= foodx and x1 < foodx + snake_block * 2 and y1 >= foody and y1 < foody + snake_block * 2:
+            foodx = round(random.randrange(0, dis_width - snake_block * 2) / 10.0) * 10.0
+            foody = round(random.randrange(0, dis_height - snake_block * 2) / 10.0) * 10.0
+            Length_of_snake += 1
+            score += 10
+            bomb_counter += 10
+            bomb_count += 10
+
+            eat_sound.play()
+
+            if bomb_count >= bomb_interval:
+                bomb_count -= bomb_interval
+                new_bomb_x = round(random.randrange(0, dis_width - snake_block * 3) / 10.0) * 10.0
+                new_bomb_y = round(random.randrange(0, dis_height - snake_block * 3) / 10.0) * 10.0
+                bombs.append((new_bomb_x, new_bomb_y))
+
+        for bomb_pos in bombs:
+            if x1 >= bomb_pos[0] and x1 < bomb_pos[0] + 3 * snake_block and y1 >= bomb_pos[1] and y1 < bomb_pos[1] + 3 * snake_block:
+                crash_sound.play()
+                game_close = True
+
+        if mode == "timed":
+            if time.time() - start_time >= time_limit:
+                game_close = True
+                message("Time's up! Your score: " + str(score), (255, 255, 255))
+                pygame.display.update()
+                time.sleep(3)
+
+        if mode == "survival":
+            snake_speed += 0.01
+
+        clock.tick(snake_speed)
+
+    pygame.quit()
+    quit()
+
+mode = game_intro()
+gameLoop(mode)
